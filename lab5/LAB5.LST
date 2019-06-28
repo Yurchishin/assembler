@@ -1,0 +1,293 @@
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Page     1-1
+
+
+       1				.386 
+       2 = 0006				clr		equ		110b 
+       3				 
+       4 0000				DATA	SEGMENT USE16  
+       5 0000  001E[			dvalue		db	30 dup('0',0Fh)
+					 
+       6	   30			
+       7	   0F			
+       8			 ]	
+       9				
+      10 003C  0014			len		dw	20	
+								 
+      11 003E  000A			row		dw	10	
+								 
+      12 0040  001E			col		dw	30	
+								 
+      13 0042  08			valadd		db	8	
+								 
+      14 0043  FF			cont		db	0ffh	
+								 
+      15 0044				DATA	ENDS 
+      16				 
+      17				 
+      18				ASSUME	CS: CODE, DS: DATA 
+      19 0000				CODE	SEGMENT USE16  
+      20 0000				@@entry: 
+      21 0000  B8 ---- R		mov		ax, data 
+      22 0003  8E D8			mov		ds, ax 
+      23 0005  B8 B800			mov		ax, 0b800h 
+      24 0008  8E C0			mov		es, ax 
+      25 000A  E8 0082 R		call	mouse_init 
+      26 000D  B0 02			mov 	al, 02h 
+      27 000F  B4 00			mov 	ah, 00h 
+      28 0011  CD 10			int 	10h 
+      29 0013  B8 0001			mov 	ax, 1 
+      30 0016  CD 33			int 	33h		 
+      31				 
+      32 0018				@write:				
+									 
+      33 0018  FA			cli				
+							 
+      34 0019  8D 36 0000 R		lea		si, dvalue 
+      35				 
+      36 001D  A0 003E R		mov		al, byte ptr row
+							 
+      37 0020  B4 00			mov		ah, 0 
+      38 0022  69 C0 00A0		imul	ax, (80*2) 
+      39 0026  03 06 0040 R		add		ax, col 
+      40 002A  03 06 0040 R		add		ax, col		
+							 
+      41 002E  8B F8			mov		di, ax 
+      42 0030  8B 0E 003C R		mov		cx, len 
+      43					 
+      44 0034				@l_write: 
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Page     1-2
+
+
+      45 0034  8B D9			mov 	bx, cx 
+      46 0036  D1 E3			shl 	bx, 1 
+      47 0038  8A 20			mov 	ah, ds:[si+bx]	 
+      48 003A  26: 88 21		mov 	es:[di+bx], ah 
+      49 003D  E2 F5			loop	@l_write 
+      50 003F  FB			sti	 
+      51				 
+      52 0040				@9: 				
+									 
+      53 0040  8B 36 003C R		mov		si, len 
+      54 0044  D1 E6			shl		si, 1 
+      55 0046  83 EE 02			sub		si, 2		
+							 
+      56 0049  B4 00			mov		ah ,0		
+							 
+      57								
+									
+									 
+      58 004B  8A 84 0000 R		mov		al, dvalue[si] 
+      59 004F  02 06 0042 R		add		al, [valadd] 
+      60 0053  37			aaa				
+							 
+      61								
+									
+									 
+      62 0054  0C 30			or		al, 30h		
+							 
+      63 0056  88 84 0000 R		mov		dvalue[si], al 
+      64				 
+      65 005A				@10: 
+      66 005A  4E			dec		si 
+      67 005B  4E			dec		si 
+      68 005C  8A C4			mov		al, ah 
+      69 005E  B4 00			mov		ah, 0 
+      70 0060  02 84 0000 R		add		al, dvalue[si]	
+							 
+      71 0064  37			aaa 
+      72 0065  0C 30			or		al, 30h 
+      73 0067  88 84 0000 R		mov		dvalue[si], al 
+      74								
+							 
+      75 006B  83 FE 00			cmp		si, 0 
+      76 006E  7F EA			jg		@10 
+      77				 
+      78 0070  A0 0043 R		mov		al, [cont]	
+							 
+      79 0073  3C FF			cmp		al, 0ffh 
+      80 0075  74 A1			je		@write 
+      81 0077  EB 01 90			jmp		exit 
+      82				 
+      83 007A				exit:		 
+      84 007A  E8 00A3 R		call	mouse_deinit 
+      85 007D  B8 4C00			mov		ax, 4c00h 
+      86 0080  CD 21			int		21h 
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Page     1-3
+
+
+      87				 
+      88 0082				mouse_init	proc 
+      89 0082  50			push	ax 
+      90 0083  51			push	cx 
+      91 0084  52			push	dx 
+      92								
+							 
+      93 0085  33 C0			xor		ax, ax 
+      94 0087  CD 33			int		33h 
+      95 0089  85 C0			test	ax, ax 
+      96 008B  0F 84 009F R		jz		@mi_endp 
+      97								
+							 
+      98 008F  B8 000C			mov		ax, 0ch		
+									
+							 
+      99 0092  B9 000A			mov		cx, 1010b	
+							 
+     100								
+									
+									
+						 
+     101 0095  06			push	es			
+							 
+     102 0096  0E			push	cs 
+     103 0097  07			pop		es		
+								 
+     104								
+									
+									
+						 
+     105 0098  8D 16 00B1 R		lea 	dx, prmaus		
+									
+								 
+     106 009C  CD 33			int		33h		 
+     107								
+								 
+     108 009E  07			pop		es 
+     109				 
+     110 009F				@mi_endp:		 
+     111 009F  5A			pop		dx 
+     112 00A0  59			pop		cx 
+     113 00A1  58			pop		ax 
+     114 00A2  C3			ret 
+     115 00A3				mouse_init	endp 
+     116				 
+     117 00A3				mouse_deinit proc 
+     118 00A3  50			push	ax 
+     119 00A4  51			push	cx 
+     120 00A5  52			push	dx 
+     121								
+						 
+     122 00A6  33 C9			xor		cx, cx		
+							 
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Page     1-4
+
+
+     123 00A8  B8 000C			mov		ax, 0ch		
+									 
+     124 00AB  CD 33			int		33h	 
+     125				 
+     126 00AD  5A			pop		dx 
+     127 00AE  59			pop		cx 
+     128 00AF  58			pop		ax 
+     129 00B0  C3			ret 
+     130 00B1				mouse_deinit endp 
+     131								
+									
+									
+						 
+     132 00B1				prmaus 	proc 	far 
+     133								
+									
+									 
+     134 00B1  1E			push	ds     
+     135 00B2  06			push	es 
+     136 00B3  60			pusha 
+     137								
+									
+									 
+     138 00B4  68 B800			push	0b800h 			
+						 
+     139 00B7  07			pop		es 
+     140 00B8  68 ---- R		push 	data 
+     141 00BB  1F			pop		ds 
+     142								
+									
+								 
+     143 00BC  F7 C3 0001		test	bx, 01b 
+     144 00C0  0F 84 00DD R		jz		@exit_r 
+     145				 
+     146 00C4  B8 0003			mov 	ax,3 
+     147 00C7  CD 33			int 	33h 
+     148 00C9  C1 E9 03			shr 	cx,3 
+     149 00CC  C1 EA 03			shr 	dx,3 
+     150 00CF  8B F2			mov 	si, dx 
+     151 00D1  6B F6 50			imul	si, 80 
+     152 00D4  03 F1			add 	si, cx 
+     153 00D6  D1 E6			shl		si, 1 
+     154 00D8  26: C6 44 01 06		mov 	byte ptr es:[si+1], clr 
+     155				 
+     156				 
+     157 00DD				@exit_r: 
+     158 00DD  A9 0008			test	ax, 1000b 
+     159 00E0  0F 84 00E9 R		jz		@l 
+     160				 
+     161 00E4  C6 06 0043 R 00		mov		byte ptr[cont], 0 
+     162 00E9				@l:	 
+     163 00E9  61			popa 
+     164 00EA  07			pop		es 
+     165 00EB  1F			pop		ds 
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Page     1-5
+
+
+     166 00EC  CB			ret 
+     167 00ED				prmaus	endp 
+     168 00ED				CODE	ENDS 
+     169				END @@entry 
+Microsoft (R) Macro Assembler Version 5.00                  3/27/19 22:06:50
+                                                             Symbols-1
+
+
+
+
+                N a m e         	Size	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	16 Bit	00ED	PARA	NONE	
+DATA . . . . . . . . . . . . . .  	16 Bit	0044	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CLR  . . . . . . . . . . . . . .  	NUMBER	0006	
+COL  . . . . . . . . . . . . . .  	L WORD	0040	DATA
+CONT . . . . . . . . . . . . . .  	L BYTE	0043	DATA
+
+DVALUE . . . . . . . . . . . . .  	L BYTE	0000	DATA	Length = 001E
+
+EXIT . . . . . . . . . . . . . .  	L NEAR	007A	CODE
+
+LEN  . . . . . . . . . . . . . .  	L WORD	003C	DATA
+
+MOUSE_DEINIT . . . . . . . . . .  	N PROC	00A3	CODE	Length = 000E
+MOUSE_INIT . . . . . . . . . . .  	N PROC	0082	CODE	Length = 0021
+
+PRMAUS . . . . . . . . . . . . .  	F PROC	00B1	CODE	Length = 003C
+
+ROW  . . . . . . . . . . . . . .  	L WORD	003E	DATA
+
+VALADD . . . . . . . . . . . . .  	L BYTE	0042	DATA
+
+@10  . . . . . . . . . . . . . .  	L NEAR	005A	CODE
+@9 . . . . . . . . . . . . . . .  	L NEAR	0040	CODE
+@@ENTRY  . . . . . . . . . . . .  	L NEAR	0000	CODE
+@EXIT_R  . . . . . . . . . . . .  	L NEAR	00DD	CODE
+@FILENAME  . . . . . . . . . . .  	TEXT  lab5		
+@L . . . . . . . . . . . . . . .  	L NEAR	00E9	CODE
+@L_WRITE . . . . . . . . . . . .  	L NEAR	0034	CODE
+@MI_ENDP . . . . . . . . . . . .  	L NEAR	009F	CODE
+@WRITE . . . . . . . . . . . . .  	L NEAR	0018	CODE
+
+
+    165 Source  Lines
+    165 Total   Lines
+     23 Symbols
+
+  50404 + 466140 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

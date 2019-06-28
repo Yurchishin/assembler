@@ -1,0 +1,34 @@
+Listing:
+0000   Data SEGMENT
+0000     Str1   DB  'Rybak'
+0005     Int2   DB  01010101b
+0006     Int10  DW  523
+0008     Int16  DD  0F856Ah
+000C   Data ENDS
+0000   Code SEGMENT
+0000     NUMBER EQU 1
+0000     Int0  DB  00001101b
+0001   start:
+0001     IF NUMBER | True
+0001     Jbe endl
+0007     je endl
+000D     Cli
+000E     Jbe endl
+0014     Mov dl, 00111100b
+0016     Mov al, 00001111b
+0018     Inc esi
+0019     Dec Int0[eax+edx]
+0021     Add al, dl
+0023     Cmp dl, Str1[ecx + edx]
+002A     And Int0[eax+edx], dl
+0032     Or  Int0[eax+edx], NUMBER
+003B     ENDIF
+003B     Jbe start
+003D     Cli
+003E   endl:
+003E   Code ends
+0000   END
+
+SEGMENTS
+Name: DATA, Size: 000C;
+Name: CODE, Size: 003E;

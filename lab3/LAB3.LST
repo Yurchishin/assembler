@@ -1,0 +1,185 @@
+Microsoft (R) Macro Assembler Version 5.00                  12/26/18 20:37:43
+                                                             Page     1-1
+
+
+       1				.386 
+       2 0000				data1 segment   use16 
+       3 0000  00			i1      db      0 
+       4 0001  00			i2      db      0 
+       5 0002  00			i3      db      0 
+       6 0003  00			i4      db      0 
+       7 0004  0003[			a1      dw      3 dup(4 dup(2 dup (5 du
+					p(?)))) 
+       8	0004[			
+       9	 0002[			
+      10	  0005[			
+      11	      ????		
+      12		      ]		
+      13		       ]	
+      14			]	
+      15			 ]	
+      16				
+      17 00F4  0000 R ---- R		adres   dw      begin2, code2 
+      18 00F8				data1 ends 
+      19				 
+      20 0000				data2 segment   use16 
+      21 0000  0003[			a2      dd      3 dup(4 dup(2 dup (5 du
+					p(?)))) 
+      22	0004[			
+      23	 0002[			
+      24	  0005[			
+      25	      ????????		
+      26		      ]		
+      27		       ]	
+      28			]	
+      29			 ]	
+      30				
+      31 01E0				data2 ends 
+      32				 
+      33 0000				code1 segment use16 
+      34				        assume  ds:data1, es:data2, cs:
+					code1 
+      35 0000				begin: 
+      36 0000  B8 ---- R		    mov     ax, data1 
+      37 0003  8E D8			    mov     ds, ax 
+      38 0005  B8 ---- R		    mov     ax, data2 
+      39 0008  8E C0			    mov     es, ax 
+      40				 
+      41 000A  BA 0000 R		    mov     dx, offset a2 
+      42				 
+      43 000D  66| 33 C0		    xor     eax, eax 
+      44				 
+      45 0010  C6 06 0000 R 00		    mov     i1, 0 
+      46 0015				@i1: 
+      47 0015  C6 06 0001 R 00		    mov     i2, 0 
+      48 001A				@i2: 
+      49 001A  C6 06 0002 R 00		    mov     i3, 0 
+      50 001F				@i3: 
+      51 001F  C6 06 0003 R 00		    mov     i4, 0 
+Microsoft (R) Macro Assembler Version 5.00                  12/26/18 20:37:43
+                                                             Page     1-2
+
+
+      52 0024				@i4: 
+      53 0024  0F B6 06 0000 R		    movzx   ax, byte ptr i1 
+      54 0029  C1 E0 02			    shl     ax, 2 
+      55 002C  0F B6 16 0001 R		    movzx   dx, byte ptr i2 
+      56 0031  03 C2			    add     ax, dx 
+      57 0033  D1 E0			    shl     ax, 1 
+      58 0035  0F B6 16 0002 R		    movzx   dx, byte ptr i3 
+      59 003A  03 C2			    add     ax, dx 
+      60 003C  6B C0 05			    imul    ax, 5 
+      61 003F  0F B6 16 0003 R		    movzx   dx, byte ptr i4 
+      62 0044  02 C2			    add     al, dx 
+lab3.ASM(44): warning A4031: Operand types must match
+      63				 
+      64 0046  67| 8D 1485 00000002	    lea     dx, [offset a2 + eax * 4 + 
+					2] 
+      65	R			
+      66 004E  67| 89 1445 00000004	    mov     word ptr a1[eax * 2], dx 
+      67	R			
+      68				 
+      69 0056  FE 06 0003 R		    inc     i4 
+      70 005A  80 3E 0003 R 05		    cmp     i4, 5 
+      71 005F  75 C3			    jne     @i4 
+      72				 
+      73 0061  FE 06 0002 R		    inc     i3 
+      74 0065  80 3E 0002 R 02		    cmp     i3, 2 
+      75 006A  75 B3			    jne     @i3 
+      76				 
+      77 006C  FE 06 0001 R		    inc     i2 
+      78 0070  80 3E 0001 R 04		    cmp     i2, 4 
+      79 0075  75 A3			    jne     @i2 
+      80				 
+      81 0077  FE 06 0000 R		    inc     i1 
+      82 007B  80 3E 0000 R 03		    cmp     i1, 03h          
+      83 0080  75 93			    jne     @i1 
+      84				 
+      85 0082  FF 2E 00F4 R		    jmp     dword ptr adres 
+      86 0086				@endprog: 
+      87 0086  B8 ---- R		    mov     ax, data1 
+      88 0089  8E C0			    mov     es, ax 
+      89 008B  B8 ---- R		    mov     ax, data2 
+      90 008E  8E D8			    mov     ds, ax 
+      91				 
+      92 0090  B8 4C00			    mov     ax, 4c00h 
+      93 0093  CD 21			    int     21h 
+      94				 
+      95 0095				code1   ends 
+      96				 
+      97 0000				code2   segment use16 
+      98				        assume es:data2, ds:data1, cs:c
+					ode2 
+      99 0000				begin2: 
+     100 0000  B8 ---- R		        mov     ax, data1 
+     101 0003  8E D8			        mov     ds, ax 
+     102 0005  B8 ---- R		        mov     ax, data2 
+Microsoft (R) Macro Assembler Version 5.00                  12/26/18 20:37:43
+                                                             Page     1-3
+
+
+     103 0008  8E C0			        mov     es, ax 
+     104				 
+     105						; load adress of elemen
+					t A1[2, 1, 1, 3] 
+     106 000A  66| B8 00000062		        mov     eax, 62h       ; 98 
+     107 0010  67| 66| 8D 0445 0000	        lea     eax, [offset a1 + eax *
+					 2] 
+     108       0004 R			
+     109				 
+     110 0019  BF 0000 R		        mov     di, offset a2 
+     111 001C  B9 0078			        mov     cx, 78h        ; 120 
+     112 001F  F2/ 66| AB		        repnz   stosd 
+     113				 
+     114 0022  90			        nop 
+     115 0023  90			        nop 
+     116				 
+     117 0024  EA 0086 ---- R		        jmp     far ptr @endprog 
+     118				 
+     119 0029				code2   ends 
+     120				        end     begin 
+Microsoft (R) Macro Assembler Version 5.00                  12/26/18 20:37:43
+                                                             Symbols-1
+
+
+
+
+                N a m e         	Size	Length	 Align	Combine Class
+
+CODE1  . . . . . . . . . . . . .  	16 Bit	0095	PARA	NONE	
+CODE2  . . . . . . . . . . . . .  	16 Bit	0029	PARA	NONE	
+DATA1  . . . . . . . . . . . . .  	16 Bit	00F8	PARA	NONE	
+DATA2  . . . . . . . . . . . . .  	16 Bit	01E0	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+A1 . . . . . . . . . . . . . . .  	L WORD	0004	DATA1	Length = 0003
+A2 . . . . . . . . . . . . . . .  	L DWORD	0000	DATA2	Length = 0003
+ADRES  . . . . . . . . . . . . .  	L WORD	00F4	DATA1
+
+BEGIN  . . . . . . . . . . . . .  	L NEAR	0000	CODE1
+BEGIN2 . . . . . . . . . . . . .  	L NEAR	0000	CODE2
+
+I1 . . . . . . . . . . . . . . .  	L BYTE	0000	DATA1
+I2 . . . . . . . . . . . . . . .  	L BYTE	0001	DATA1
+I3 . . . . . . . . . . . . . . .  	L BYTE	0002	DATA1
+I4 . . . . . . . . . . . . . . .  	L BYTE	0003	DATA1
+
+@ENDPROG . . . . . . . . . . . .  	L NEAR	0086	CODE1
+@FILENAME  . . . . . . . . . . .  	TEXT  lab3		
+@I1  . . . . . . . . . . . . . .  	L NEAR	0015	CODE1
+@I2  . . . . . . . . . . . . . .  	L NEAR	001A	CODE1
+@I3  . . . . . . . . . . . . . .  	L NEAR	001F	CODE1
+@I4  . . . . . . . . . . . . . .  	L NEAR	0024	CODE1
+
+
+     99 Source  Lines
+     99 Total   Lines
+     20 Symbols
+
+  50402 + 466142 Bytes symbol space free
+
+      1 Warning Errors
+      0 Severe  Errors

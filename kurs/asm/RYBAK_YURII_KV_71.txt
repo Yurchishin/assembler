@@ -1,0 +1,860 @@
+//CONST TYPES
+const binVar = `[0|1]{8}B`;
+const hexVar = `[A-F0-9]+H`;
+const decVar  = `[0-9]+`;
+const ident = `[A-Z][A-Z0-9]{1,8}`;
+const IMM = `${binVar}|${hexVar}|${decVar}|${ident}`;
+
+//Registers
+const reg8 = `[ABCD][HL]`;
+const reg32 = `(?:EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP)`;
+const REG = `${reg8}|${reg32}`;
+const prefix = `(DS|CS|ES|SS|GS|FS):`;
+
+//LABEL
+const label = `^\\s*([A-Z][A-Z0-9]{1,8}):\\s*$`;
+
+// DECLARATION STRING
+const varDecl = `^\\s*(${ident})\\s+(DB|DW|DD)\\s+(${binVar}|${hexVar}|${decVar})\\s*$`;
+const textVarDecl = `^\\s*(${ident})\\s+(DB)\\s+\\'([A-Z0-9\\s]*)'\\s*$`;
+const eqDecl = `^\\s*(${ident})\\s+(EQU)\\s+(${binVar}|${hexVar}|${decVar})\\s*$`;
+
+export const WebSocketConnect: WebSocketConnectActionCreator = url => createAction(WEBSOCKET_CONNECT, url)
+export const WebSocketDisonnect: WebSocketDisconnectActionCreator = () => createAction(WEBSOCKET_DISCONNECT, undefined)
+export const WebSocketOpen: WebSocketOpenActionCreator = () => createAction(WEBSOCKET_OPEN, true)
+export const WebSocketClosed: WebSocketClosedActionCreator = () => createAction(WEBSOCKET_CLOSED, false)
+
+
+export function validationPseudonym(rule: any, value: any, callback: any): void {
+    if (!value) callback(ValidationMessagePseudonym.isEmpty)
+    if (isNotAscii(value)) callback(ValidationMessagePseudonym.isNotAscii)
+    if (hasSpaces(value)) callback(ValidationMessagePseudonym.hasSpaces)
+    if (hasAdditionalCharacters(value)) callback(ValidationMessagePseudonym.hasAdditionalCharacters)
+    if (hasNotHaveMinSize(value, 4)) callback(ValidationMessagePseudonym.hasNotHaveMinSize)
+    if (hasNotHaveMaxSize(value, 16)) callback(ValidationMessagePseudonym.hasNotHaveMaxSize)
+
+    callback()
+}
+
+export function validationRegistrationPassword(form: any): any {
+    const { getFieldsValue, validateFields, setFields } = form
+
+    return function(rule: any, value: any, callback: any) {
+        if (!value) callback(ValidationMessagePassword.isEmpty)
+        else if (isNotAscii(value)) callback(ValidationMessagePassword.isNotAscii)
+        else if (hasSpaces(value)) callback(ValidationMessagePassword.hasSpaces)
+        else if (hasNotHaveMinSize(value, 8)) callback(ValidationMessagePassword.hasNotHaveMinSize)
+        else if (hasNotHaveMaxSize(value, 20)) callback(ValidationMessagePassword.hasNotHaveMaxSize)
+        else if (isNotEqual(getFieldsValue(['confirmPassword']).confirmPassword, value)) {
+            validateFields(['confirmPassword'], (error: any, value: any) => {
+                setFields({
+                    confirmPassword: {
+                        value: value.confirmPassword,
+                        errors: [new Error(ValidationMessageConfirmPassword.isEqual)],
+                    },
+                })
+            })
+        } else {
+            validateFields(['confirmPassword'], (error: any, value: any) => {
+                setFields({
+                    confirmPassword: {
+                        value: value.confirmPassword,
+                        errors: undefined,
+                    },
+                })
+            })
+        }
+
+        callback()
+    }
+}
+
+export function validationAuthorizationPassword(rule: any, value: any, callback: any) {
+    if (!value) callback(ValidationMessagePassword.isEmpty)
+    else if (isNotAscii(value)) callback(ValidationMessagePassword.isNotAscii)
+    else if (hasSpaces(value)) callback(ValidationMessagePassword.hasSpaces)
+    else if (hasNotHaveMinSize(value, 8)) callback(ValidationMessagePassword.hasNotHaveMinSize)
+    else if (hasNotHaveMaxSize(value, 20)) callback(ValidationMessagePassword.hasNotHaveMaxSize)
+    else callback()
+}
+
+export function validationConfirmPassword(form: any): any {
+    const { getFieldsValue, isFieldsTouched } = form
+
+    return function(rule: any, value: any, callback: any) {
+        if (!value) callback(ValidationMessageConfirmPassword.isEmpty)
+        else if (isNotAscii(value)) callback(ValidationMessageConfirmPassword.isNotAscii)
+        else if (hasSpaces(value)) callback(ValidationMessageConfirmPassword.hasSpaces)
+        else if (hasNotHaveMinSize(value, 8)) callback(ValidationMessageConfirmPassword.hasNotHaveMinSize)
+        else if (hasNotHaveMaxSize(value, 20)) callback(ValidationMessageConfirmPassword.hasNotHaveMaxSize)
+        else if (isNotEqual(getFieldsValue(['password']).password, value) && isFieldsTouched(['password']))
+            callback(ValidationMessageConfirmPassword.isEqual)
+        else callback()
+    }
+}
+
+export function validationStatus(rule: any, value: any, callback: any): void {
+    if (hasNotHaveMaxSize(value, 200)) callback(ValidationMessageStatus.hasNotHaveMaxSize)
+
+    callback()
+}
+//Memory
+const MEM = `(?:\\s*(DWORD|WORD|BYTE)\\s+(PTR)|)\\s*(?:DS\:|CS:|SS:|GS:|FS:|ES\:|)\\s*(${ident})\\s*\\[\\s*(${reg32})\\s*\\+\\s*(${reg32})\\s*\\]\\s*`;
+
+export async function request<T, R>(path: string, method: string, data: T | null = null): Promise<TResponse<R>> {
+    const headers = new Headers({
+        'Content-Type': 'application/json',
+    })
+
+    const response = await fetch(path, data ? { method, body: JSON.stringify(data), headers } : { method, headers })
+
+    if (response.status >= 500) throw Error('Internal Server Error')
+
+    return await response.json()
+}
+
+function mCommand(command, op1 = null, op2 = null) {
+    if(op2) {
+        return () => `^\\s*(${command})\\s+(${op1})\\s*,\\s*(${op2})\\s*$`;
+    } else if(op1) {
+        return () => `^\\s*(${command})\\s+(${op1})\\s*$`;
+    } else {
+        return () => `^\\s*(${command})\\s*$`;
+    }
+}
+
+export type TAuthenticate = (token: string) => void
+export const authenticate: TAuthenticate = (token: string) => sessionStorage.setItem('token', token)
+
+export type TDeauthenticate = () => void
+export const deauthenticate: TDeauthenticate = () => sessionStorage.removeItem('token')
+
+export type TGetToken = () => string | null
+export const getToken: TGetToken = () => sessionStorage.getItem('token')
+
+export type TGetValidToken = () => string | undefined
+export const getValidToken: TGetValidToken = () => {
+    const token = sessionStorage.getItem('token')
+    if (token && JWT_SALT) {
+        const parseToken = token.split('.')
+        parseToken[1] = parseToken[1].slice(0, parseToken[1].length - JWT_SALT.length)
+        return parseToken.join('.')
+    }
+    return undefined
+}
+
+export type TDecodeJwtToken = () => TAuthorizedUser | undefined
+export const decodeJwtToken: TDecodeJwtToken = () => {
+    const token = getValidToken()
+    return token && isJWT(token) ? decode<TAuthorizedUser>(token) : undefined
+}
+
+export type TIsAuthenticated = () => boolean
+export const isAuthenticated: TIsAuthenticated = () => Boolean(decodeJwtToken())
+
+export type TGetUser = () => TAuthorizedUser | undefined
+export const getUser: TGetUser = () => {
+    const user = decodeJwtToken()
+    return user ? user : undefined
+}
+
+export type TGetUserRole = () => Role | undefined
+export const getUserRole: TGetUserRole = () => {
+    const user = decodeJwtToken()
+    return user ? user.role : undefined
+}
+
+export type TGetUserId = () => string | undefined
+export const getUserId: TGetUserId = () => {
+    const user = decodeJwtToken()
+    return user ? user._id : undefined
+}
+
+export type TIsUserAdmin = () => boolean
+export const isUserAdmin: TIsUserAdmin = () => {
+    const role = getUserRole()
+    return role === 'admin'
+}
+
+const ReduxWebSocketMiddleware = (realOption: ReduxWebSocketOptions): Middleware => {
+    const options = { ...reduxWebSocketDefaultOptions, ...realOption }
+    const { prefix } = options
+    const actionPrefixExp = RegExp(`^${prefix}::`)
+
+    const reduxWebsocket = new ReduxWebSocket(options)
+
+    const handlers: WebSocketHandlers = {
+        [ReduxWebSocketActionType.REDUX_WEBSOCKET_CONNECT]: reduxWebsocket.connect,
+        [ReduxWebSocketActionType.REDUX_WEBSOCKET_DISCONNECT]: reduxWebsocket.disconnect,
+    }
+
+    return (store: MiddlewareAPI) => next => (action: ReduxWebSocketAction) => {
+        const { dispatch } = store
+        const { type: actionType } = action
+
+        if (actionType && actionType.match(actionPrefixExp)) {
+            const baseActionType = action.type.replace(actionPrefixExp, '')
+
+            const handler = Reflect.get(handlers, baseActionType)
+
+            if (handler)
+                try {
+                    handler(store, action)
+                } catch (err) {
+                    dispatch(error(action, err, prefix))
+                }
+        }
+
+        return next(action)
+    }
+}
+
+
+function getType(target) {
+    switch (true) {
+        //mem
+        case new RegExp(MEM, 'g').test(target): return 'mem';
+        case new RegExp(reg32, 'g').test(target): return 'reg32';
+        case new RegExp(reg8, 'g').test(target): return 'reg8';
+        case new RegExp(ident, 'g').test(target): return 'ident';
+        case new RegExp(binVar, 'g').test(target): return 'binConst';
+        case new RegExp(hexVar, 'g').test(target): return 'hexConst';
+        case new RegExp(decVar, 'g').test(target): return 'decConst';
+        default: return 'unknown';
+    }
+}
+
+function isFunc(line, exec = false) {
+    return exec
+        ? new RegExp(`^\\s*(CLI|INC|DEC|ADD|CMP|AND|MOV|OR|JBE)`, 'g').exec(line)
+        : new RegExp(`^\\s*(CLI|INC|DEC|ADD|CMP|AND|MOV|OR|JBE)`, 'g').test(line);
+}
+
+
+export const hasAdditionalCharacters: TValidationFunction = value =>
+    new RegExp(/[!`@#$%^&*_\-=|;:'"<,>?~.*+?^${}()[\]\\]/).test(value)
+
+export const hasNotHaveAdditionalCharacters: TValidationFunction = value =>
+    !new RegExp(/[!`@#$%^&*_\-=|;:'"<,>?~.*+?^${}()[\]\\]/).test(value)
+
+
+//***FS***
+const fs = require('fs');
+//********
+const { prefix, expand } = require('./LexicalAnalyser');
+
+class Listing {
+
+    constructor(lexemes, equ) {
+        this.lexemes = lexemes;
+        //specific data
+        this.variables = {};
+        this.labels = {};
+        this.shift = 0;
+        this.currentSegment = '';
+        this.segments = {};
+        this.equ = equ;
+        //listing content
+        this.listing = 'Listing:';
+
+        this.ifElseStatus = 0; // 0 - no opened if/else; 1 - if returned true; 2 - if returned false; 3 - skip lexemes
+
+    }
+
+    export function setFieldsServerValidation(response: ErrorValidationResponse, form: any) {
+        const { getFieldsValue, setFields } = form
+        const fields = response.fields.map((value: string) => ({
+            [value]: {
+                value: getFieldsValue([value])[value],
+                errors: [new Error(response.error)],
+            },
+        }))
+
+        for (let cur in fields) setFields(fields[cur])
+    }
+
+    getShift() {
+        return this.shift
+            .toString(16)
+            .toUpperCase()
+            .padStart(4, 0);
+    }
+
+    buildListing() {
+        for (let l of this.lexemes) {
+            if(this.ifElseStatus == 1 && l.type == 'else-directive') {
+                this.ifElseStatus = 3;
+                continue;
+            } else if(this.ifElseStatus == 3 && l.type == 'else-directive') {
+                this.ifElseStatus = 2;
+                continue;
+            }  else if(this.ifElseStatus == 3 && l.type != 'endif-directive') {
+                continue;
+            }
+
+            this.listing += `\n${this.getShift()}   ${l.origin}`;
+
+            class ReduxWebSocket {
+                options: ReduxWebSocketOptions
+                websocket: WebSocket | undefined = undefined
+                reconnectCount: number = 0
+                reconnectionInterval: number | undefined = undefined
+                lastSocketUrl: string | undefined = undefined
+
+                constructor(options: ReduxWebSocketOptions) {
+                    this.options = options
+                }
+
+                handleBrokenConnection = (dispatch: Dispatch) => {
+                    const { prefix, reconnectInterval } = this.options
+
+                    this.websocket = undefined
+
+                    dispatch(broken(prefix))
+                    dispatch(beginReconnect(prefix))
+
+                    this.reconnectCount = 1
+
+                    dispatch(reconnectAttempt(this.reconnectCount, prefix))
+
+                    if (this.lastSocketUrl)
+                        this.connect({ dispatch } as MiddlewareAPI, { payload: this.lastSocketUrl } as ReduxWebSocketAction)
+
+                    this.reconnectionInterval = setInterval(() => {
+                        this.reconnectCount += 1
+
+                        dispatch(reconnectAttempt(this.reconnectCount, prefix))
+
+                        this.connect({ dispatch } as MiddlewareAPI, { payload: this.lastSocketUrl } as ReduxWebSocketAction)
+                    }, reconnectInterval)
+                }
+
+                connect = (middlewareAPI: MiddlewareAPI, action: ReduxWebSocketAction) => {
+                    if (this.websocket) this.websocket.close()
+
+                    const { prefix, onOpen } = this.options
+                    const { dispatch } = middlewareAPI
+                    const { payload } = action
+
+                    if (payload) {
+                        this.lastSocketUrl = payload
+                        this.websocket = new WebSocket(payload)
+                    }
+
+                    if (this.websocket) {
+                        this.websocket.onmessage = (event: MessageEvent) => dispatch(message(event, prefix))
+
+                        this.websocket.onopen = (event: Event) => {
+                            if (this.reconnectionInterval) {
+                                clearInterval(this.reconnectionInterval)
+
+                                this.reconnectionInterval = undefined
+                                this.reconnectCount = 0
+
+                                dispatch(reconnected(prefix))
+                            }
+
+                            if (onOpen && this.websocket != null) onOpen(this.websocket)
+
+                            dispatch(open(event, prefix))
+                        }
+
+                        this.websocket.onclose = (event: Event) => {
+                            const isNull = this.websocket == undefined
+                            dispatch(closed(event, prefix))
+
+                            if (!isNull) this.handleBrokenConnection(dispatch)
+                        }
+                    }
+                }
+
+                disconnect = () => {
+                    if (this.websocket) {
+                        this.websocket.close()
+                        this.websocket = undefined
+                    } else throw new Error('Socket connection not initialized. Dispatch WEBSOCKET_CONNECT first.')
+                }
+            }
+
+        }
+        this.addSegmentSizes();
+        fs.writeFile('listing.lst', this.listing, (err) => {
+            err && console.log('Cant write listing')
+        });
+        console.log(`\n${'.'.repeat(40)}\n${this.listing}`);
+
+    }
+
+    /////////////////////////////////////////////
+    // PROCESS DIRECTIVES                     //
+    ///////////////////////////////////////////
+    processSegStart(l) {
+        if(this.currentSegment != '' ) {
+            this.listing += ` # Error! No ENDS directive for '${this.currentSegment}'`;
+            return;
+        }
+        this.currentSegment = l.label;
+    }
+
+    /**
+     * Process IF
+     * @param l
+     */
+    export function validationLogin(rule: any, value: any, callback: any): void {
+        if (!value) callback(ValidationMessageLogin.isEmpty)
+        if (isNotAscii(value)) callback(ValidationMessageLogin.isNotAscii)
+        if (hasSpaces(value)) callback(ValidationMessageLogin.hasSpaces)
+        if (hasAdditionalCharacters(value)) callback(ValidationMessageLogin.hasAdditionalCharacters)
+        if (hasNotHaveMinSize(value, 4)) callback(ValidationMessageLogin.hasNotHaveMinSize)
+        if (hasNotHaveMaxSize(value, 16)) callback(ValidationMessageLogin.hasNotHaveMaxSize)
+
+        callback()
+    }
+
+    export function validationPseudonym(rule: any, value: any, callback: any): void {
+        if (!value) callback(ValidationMessagePseudonym.isEmpty)
+        if (isNotAscii(value)) callback(ValidationMessagePseudonym.isNotAscii)
+        if (hasSpaces(value)) callback(ValidationMessagePseudonym.hasSpaces)
+        if (hasAdditionalCharacters(value)) callback(ValidationMessagePseudonym.hasAdditionalCharacters)
+        if (hasNotHaveMinSize(value, 4)) callback(ValidationMessagePseudonym.hasNotHaveMinSize)
+        if (hasNotHaveMaxSize(value, 16)) callback(ValidationMessagePseudonym.hasNotHaveMaxSize)
+
+        callback()
+    }
+
+    /**
+     * Process Segment ENDS
+     * @param l
+     */
+    processSegEnd(l) {
+        this.segments[this.currentSegment] = this.getShift();
+        this.shift = 0;
+        this.currentSegment = '';
+    }
+
+    /**
+     * Process Variable declarations
+     * @param l
+     */
+    processVar(l) {
+        if(l.type == 'var_declar') {
+            switch (l.operands[1]) {
+                case 'DB': this.shift += 1; break;
+                case 'DW': this.shift += 2; break;
+                case 'DD': this.shift += 4; break;
+            }
+        } else {
+            this.shift += l.operands[2].length
+        }
+
+        export const isEmpty: TValidationFunction = value => Empty(value)
+
+        export const isNotEmpty: TValidationFunction = value => !Empty(value)
+
+        export const isEqual: TValidationEqualFunction = (value, equalValue) => value === equalValue
+
+        export const isNotEqual: TValidationEqualFunction = (value, equalValue) => value !== equalValue
+
+        export const isEmail: TValidationFunction = value => Email(value)
+
+        export const isNotEmail: TValidationFunction = value => !Email(value)
+
+        if(l.label in this.variables) {
+            this.listing += ` | Warrning! '${l.label}' already declarated. Previous content will be overwritten`
+        }
+        this.variables[l.label] = { type: l.type.slice(0,3), size: l.operands[1], segment: this.currentSegment }
+    }
+
+    /**
+     * Process Label declaration
+     * @param l
+     */
+    processLabel(l) {
+        this.labels[l.label] = this.shift
+    }
+
+
+    /////////////////////////////////////////////
+    // HELPERS                                //
+    ///////////////////////////////////////////
+    addSegmentSizes() {
+        this.listing += `\n\nSEGMENTS`;
+        for(let s in this.segments) {
+            this.listing += `\nName: ${s}, Size: ${this.segments[s]};`;
+        }
+    }
+
+    generateSegPrefix(addr, ident, base, index) {
+        const iSeg = this.variables[ident]['segment'];
+        if(expand(prefix, addr)) {
+            const seg = expand(prefix, addr)[1];
+            if(seg == 'DS') {
+                if(base == 'EBP' || base == 'ESP' || index == 'ESP' || index == 'ESP' || iSeg != 'DATA') {
+                    this.shift++;
+                }
+            } else if (seg == 'SS') {
+                if(base != 'EBP' && base != 'ESP' && index != 'ESP' || index != 'ESP') {
+                    this.shift++;
+                }
+                export const hasSpaces: TValidationFunction = value => new RegExp(/ /).test(value)
+
+                export const doeNotHaveSpaces: TValidationFunction = value => !new RegExp(/ /).test(value)
+            } else if (seg == 'CS') {
+                if(iSeg != 'CODE') {
+                    this.shift++;
+                }
+            } else {
+                this.shift++;
+            }
+
+            export const hasFirstCapitalLetter: TValidationFunction = value => new RegExp(/^[A-Z]/).test(value)
+
+            export const hasNotHaveFirstCapitalLetter: TValidationFunction = value => !new RegExp(/^[A-Z]/).test(value)
+
+            export const hasFirstSmallLetter: TValidationFunction = value => new RegExp(/^[a-z]/).test(value)
+
+            export const hasNotHaveFirstSmallLetter: TValidationFunction = value => !new RegExp(/^[a-z]/).test(value)
+        } else if(iSeg != 'DATA' || base == 'EBP' || base == 'ESP' || index == 'ESP') {
+            this.shift++;
+        }
+    }
+
+    /////////////////////////////////////////////
+    // CALC SHIFT FOR COMMANDS                //
+    ///////////////////////////////////////////
+    processFunc(l) {
+        switch (l.label) {
+            case 'INC': this.calcInc(l); break; // +
+            case 'DEC': this.calcDec(l); break; // +
+            case 'ADD': this.calcAdd(l); break; // +
+            case 'CLI': this.calcCli(l); break; // +
+            case 'AND': this.calcAnd(l); break; // +
+            case 'CMP': this.calcCmp(l); break; // +
+            case 'MOV': this.calcMov(l); break; // +
+            case 'OR': this.calcOr(l); break;
+            case 'JBE': this.calcJmp(l); break;
+        }
+    }
+
+    /**
+     * Calc shift for INC
+     * @param l
+     */
+    export const hasNotHaveNumbersAtTheEnd: TValidationFunction = value => !new RegExp(/\d$/).test(value)
+
+    export const hasNumbersAtTheStart: TValidationFunction = value => new RegExp(/^\d/).test(value)
+
+    export const hasNotHaveNumbersAtTheStart: TValidationFunction = value => !new RegExp(/^\d/).test(value)
+
+    export const hasAdditionalCharacters: TValidationFunction = value =>
+        new RegExp(/[!`@#$%^&*_\-=|;:'"<,>?~.*+?^${}()[\]\\]/).test(value)
+
+    export const hasNotHaveAdditionalCharacters: TValidationFunction = value =>
+        !new RegExp(/[!`@#$%^&*_\-=|;:'"<,>?~.*+?^${}()[\]\\]/).test(value)
+
+
+    /**
+     * Calc shift for DEC
+     * @param l
+     */
+    calcDec(l) {
+        if(!(l.operands[1] in this.variables)) {
+            this.listing += ` # Error! What is '${l.operands[1]}' ?`;
+            return;
+        }
+        this.shift += this.variables[l.operands[1]].size == 'DW'
+            ? 8
+            : 7;
+        this.generateSegPrefix(...l.operands)
+    }
+
+   export const actionHandlers = {
+     [constants.CHOOSE_INDUSTRY]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'industry'], industry => payload.industry)
+       .updateIn([`${payload.topicKey}Filters`, 'industryName'], industryName => payload.industryName),
+     [constants.CHOOSE_SUB_INDUSTRY]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustry'], subIndustry => payload.subIndustry)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustryName'], subIndustryName => payload.subIndustryName),
+     [constants.CHOOSE_REGION]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'region'], region => payload.region)
+       .updateIn([`${payload.topicKey}Filters`, 'regionName'], regionName => payload.regionName),
+     [constants.CHOOSE_OWNERSHIP]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'ownershipName'], ownershipName => payload.ownershipName)
+       .updateIn([`${payload.topicKey}Filters`, 'ownership'], ownership => payload.ownership),
+     [constants.CHOOSE_REVENUE]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'revenueName'], revenueName => payload.revenueName)
+       .updateIn([`${payload.topicKey}Filters`, 'revenue'], revenue => payload.revenue)
+       .updateIn([`${payload.topicKey}Filters`, 'maxRevenue'], revenue => payload.maxRevenue),
+     [constants.CHOOSE_HEADCOUNT]: (state, payload) => state.updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => true)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'headcountName'], headcount => payload.headcountName)
+       .updateIn([`${payload.topicKey}Filters`, 'headcount'], headcount => payload.headcount)
+       .updateIn([`${payload.topicKey}Filters`, 'maxHeadcount'], headcount => payload.maxHeadcount),
+     [constants.TOGGLE_COMPANY]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => payload.selectedCompaniesFilter),
+     [constants.FILTER_BY_TRUE_MATCH]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => false)
+       .updateIn([`${payload.topicKey}Filters`, 'industry'], industry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'industryName'], industryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustry'], subIndustry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustryName'], subIndustryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'region'], region => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'regionName'], regionName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'ownership'], ownership => '')
+       .updateIn([`${payload.topicKey}Filters`, 'ownershipName'], ownershipName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenueName'], revenueName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenue'], revenue => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcount'], headcount => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcountName'], headcountName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => payload.trueMatch),
+     [constants.FILTER_BY_SELECT_COMPANIES]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => false)
+       .updateIn([`${payload.topicKey}Filters`, 'industry'], industry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'industryName'], industryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustry'], subIndustry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustryName'], subIndustryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'region'], region => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'regionName'], regionName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'ownership'], ownership => '')
+       .updateIn([`${payload.topicKey}Filters`, 'ownershipName'], ownershipName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenueName'], revenueName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenue'], revenue => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcount'], headcount => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcountName'], headcountName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false)
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => payload.filterByCompanies),
+     [constants.APPLY_FILTERS_START]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'apply'], apply => true),
+     [constants.APPLY_FILTERS_FINISH]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'apply'], apply => false),
+     [constants.RESET_FILTERS_START]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'isFiltered'], isFiltered => false)
+       .updateIn([`${payload.topicKey}Filters`, 'reset'], reset => true)
+       .updateIn([`${payload.topicKey}Filters`, 'industry'], industry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'industryName'], industryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustry'], subIndustry => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'subIndustryName'], subIndustryName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'region'], region => 0)
+       .updateIn([`${payload.topicKey}Filters`, 'regionName'], regionName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'ownership'], ownership => '')
+       .updateIn([`${payload.topicKey}Filters`, 'ownershipName'], ownershipName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenueName'], revenueName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'revenue'], revenue => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcount'], headcount => '')
+       .updateIn([`${payload.topicKey}Filters`, 'headcountName'], headcountName => null)
+       .updateIn([`${payload.topicKey}Filters`, 'filterByCompanies'], filterByCompanies => false)
+       .updateIn([`${payload.topicKey}Filters`, 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn([`${payload.topicKey}Filters`, 'trueMatch'], trueMatch => false),
+     [constants.RESET_FILTERS_FINISH]: (state, payload) => state
+       .updateIn([`${payload.topicKey}Filters`, 'reset'], reset => false),
+
+     // Modeller
+     [constants.CHOOSE_FIRST_METRIC]: (state, payload) => state.updateIn(['chooseMetric', 'firstTopicId'], firstTopicId => payload.topicId)
+       .updateIn(['chooseMetric', 'firstMetric'], firstMetric => payload.metricId)
+       .updateIn(['chooseMetric', 'firstMetricName'], firstMetricName => payload.metricName),
+     [constants.CHOOSE_SECOND_METRIC]: (state, payload) => state.updateIn(['chooseMetric', 'secondTopicId'], secondTopicId => payload.topicId)
+       .updateIn(['chooseMetric', 'secondMetric'], secondMetric => payload.metricId)
+       .updateIn(['chooseMetric', 'secondMetricName'], secondMetricName => payload.metricName),
+     [constants.CLEAR_ALL_METRIC_FILTERS]: state => state
+       .updateIn(['metricFilters', 'isFiltered'], isFiltered => false)
+       .updateIn(['metricFilters', 'trueMatch'], trueMatch => false)
+       .updateIn(['metricFilters', 'selectedCompaniesFilter'], selectedCompaniesFilter => [])
+       .updateIn(['metricFilters', 'filterByCompanies'], filterByCompanies => false)
+       .updateIn(['metricFilters', 'industry'], industry => 0)
+       .updateIn(['metricFilters', 'industryName'], industryName => null)
+       .updateIn(['metricFilters', 'subIndustry'], subIndustry => 0)
+       .updateIn(['metricFilters', 'subIndustryName'], subIndustryName => null)
+       .updateIn(['metricFilters', 'region'], region => 0)
+       .updateIn(['metricFilters', 'regionName'], regionName => null)
+       .updateIn(['metricFilters', 'revenue'], revenue => '')
+       .updateIn(['metricFilters', 'revenueName'], revenueName => null)
+       .updateIn(['metricFilters', 'headcount'], headcount => '')
+       .updateIn(['metricFilters', 'headcountName'], headcountName => null)
+       .updateIn(['metricFilters', 'ownership'], ownership => '')
+       .updateIn(['metricFilters', 'ownershipName'], ownershipName => null)
+       .updateIn(['chooseMetric', 'firstTopicId'], firstTopicId => null)
+       .updateIn(['chooseMetric', 'firstMetric'], firstMetric => null)
+       .updateIn(['chooseMetric', 'firstMetricName'], firstMetricName => null)
+       .updateIn(['chooseMetric', 'secondTopicId'], secondTopicId => null)
+       .updateIn(['chooseMetric', 'secondMetric'], secondMetric => null)
+       .updateIn(['chooseMetric', 'secondmetricName'], secondMetricName => null),
+   };
+
+    /**
+     * Calc shift for CMP
+     * @param l
+     */
+    calcCmp(l) {
+        if(!(l.operands[2] in this.variables)) {
+            this.listing += ` | Error! What is '${l.operands[2]}' ?`;
+            return;
+        }
+        this.shift += 7;
+        this.generateSegPrefix(...l.operands.slice(1))
+    }
+
+    /**
+     * Calc shift for MOV
+     * @param l
+     */
+    calcMov(l) {
+        if(l.operandTypes[1] == 'ident') {
+            if(l.operands[1] in this.equ) {
+                l.operands[1] = this.equ[l.operands[1]];
+            } else {
+                this.listing += ` # Error! What is '${l.operands[1]}' ?`;
+                return null;
+            }
+        }
+        this.shift += l.operandTypes[0] == 'reg8' ? 2 : 5;
+    }
+
+    /**
+     * Calc shift for JMP
+     * @param l
+     */
+    calcJmp(l) {
+        if(l.operands[0] in this.labels && (this.shift - this.labels[l.operands[0]]) <= 127) {
+            this.shift += 2;
+        } else {
+            this.shift += 6;
+        }
+    }
+
+    /**
+     * Calc shift for OR
+     * @param l
+     */
+    calcOr(l) {
+        if(l.operandTypes[4] == 'ident') {
+            if(l.operands[4] in this.equ) {
+                l.operands[4] = this.equ[l.operands[4]];
+            } else {
+                this.listing += ` | Error! What is '${l.operands[4]}' ?`;
+                return null;
+            }
+        }
+        if(!(l.operands[1] in this.variables)) {
+            this.listing += ` | Error! What is '${l.operands[1]}' ?`;
+            return;
+        }
+        export function isDefined<T>(value: T | undefined | null): value is T {
+            return Boolean(value)
+        }
+
+        export function isUndefined<T>(value: T | undefined | null): value is T {
+            return !Boolean(value)
+        }
+    }
+}
+
+module.exports = Listing;
+
+const Lex = require('./LexicalAnalyser');
+
+class SyntaxAnalyser {
+
+    export function fieldsIsNotEmpty<F>(...fields: Array<F>): boolean {
+            for (const current of fields) if (!current) return true
+            return false
+        }
+
+        export function objectIsNotEmpty<T>(object: T): boolean {
+            for (const field in object) if (!object[field as keyof T]) return true
+            return false
+        }
+
+
+    getType() {
+        return this.type;
+    }
+
+    export function objectIsEmpty<T>(object: T): boolean {
+        for (const field in object) if (object[field as keyof T]) return false
+        return true
+    }
+
+    parseLabel() {
+        this.operands = Lex.expand(Lex.label, this.src).slice(1);
+        this.type = 'label';
+        this.label = this.operands[0];
+        this.operandTypes = ['ident'];
+    }
+
+    parseLabelEnd() {
+        this.operands = ['END', ...Lex.expand(Lex.vLabelEnd, this.src).slice(1)];
+        this.type = 'label-end';
+        this.label = this.operands[0];
+        this.operandTypes = ['end_directive', 'ident' ]
+    }
+
+    export function isObjEmpty<O>(obj: O) {
+        return Object.keys(obj).length !== 0
+    }
+
+    export function compose<F1 extends Function, F2 extends Function>(fn1: F1, fn2: F2) {
+        return function<Ar>(...args: Array<Ar>) {
+            return fn1(fn2(args))
+        }
+    }
+
+    // If, Else If, Else
+    export function althoughOneOfThem<F, S>(first: F, second: S): boolean {
+        return Boolean(first || second)
+    }
+
+    parseIf() {
+        this.type = 'if-directive';
+        this.operands = Lex.expand(Lex.vIf, this.src).slice(1);
+        this.operandTypes = this.operands.map(o => Lex.getType(o))
+    }
+
+    parseEq() {
+        this.type = 'eq-declar';
+        const r = Lex.expand(Lex.eqDecl, this.src);
+        this.equ[r[1]] = r[3];
+    }
+
+    export function bothOfThem<F, S>(first: F, second: S): boolean {
+        return Boolean(first && second)
+    }
+
+    export function onlyTheFirst<F, S>(first: F, second: S): boolean {
+        return Boolean(first && !second)
+    }
+
+    export function onlyTheSecond<F, S>(first: F, second: S): boolean {
+        return Boolean(!first && second)
+    }
+
+
+    toString() {
+        let s = `${this.line}) ${this.src} -> ${this.type}`;
+        this.operands.map((e, i) => {
+            s += `\n\t${i+1}) ${e} ${this.operandTypes[i]} (Length: ${e.length})`;
+        });
+        return s;
+    }
+
+}
+
+module.exports = SyntaxAnalyser;

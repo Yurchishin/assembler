@@ -1,0 +1,105 @@
+Microsoft (R) Macro Assembler Version 5.00                  9/24/18 17:05:19
+                                                             Page     1-1
+
+
+				 
+				  
+				.186 
+				 
+ 0000				code SEGMENT          ;7 6 5 4 3 2 1 0      111
+				10011b     243d 
+				     ASSUME cs:code   ;4 1 6 0 3 6 2 1      111
+				10101b        
+				 
+ 0000				begin: 
+ 0000  B0 F3			        mov al, 11110011b    
+ 0002  B6 00			        mov dh,0   
+				 
+				        	; 0-ий розряд 
+ 0004  8A E0			        	mov ah, al     		      
+ 0006  80 E4 01			        	and ah, 00000001b  
+ 0009  B1 04					mov cl, 4  		
+					 
+ 000B  D2 E4					shl ah, cl		
+					 
+ 000D  0A F4					or dh, ah	 
+				 
+						; 1-ий розряд 
+ 000F  8A E0			        	mov ah, al     		      
+ 0011  80 E4 02			        	and ah, 00000010b 	
+						 
+ 0014  D0 EC					shr ah, 1		
+					 
+ 0016  0A F4					or dh, ah 
+ 0018  B1 06					mov cl, 6 
+ 001A  D2 E4					shl ah, cl 
+ 001C  0A F4					or dh, ah		 
+				        
+						 
+				        	; 2-ий розряд 
+ 001E  8A E0			        	mov ah, al           
+ 0020  80 E4 04				       	and ah, 00000100b	
+						 
+ 0023  D0 EC					shr ah, 1 
+ 0025  0A F4					or dh, ah 
+				 
+						;3-ий розряд 
+ 0027  8A E0					mov ah, al 
+ 0029  80 E4 08					and ah, 00001000b 
+ 002C  0A F4					or dh, ah 
+				 
+						; 4-ий розряд 
+ 002E  8A E0			        	mov ah, al     		      
+ 0030  80 E4 10			        	and ah, 00010000b  
+ 0033  B1 03					mov cl, 3  		
+					 
+ 0035  D2 E4					shl ah, cl		
+					 
+ 0037  0A F4					or dh, ah 
+Microsoft (R) Macro Assembler Version 5.00                  9/24/18 17:05:19
+                                                             Page     1-2
+
+
+						 
+						; 6-ий розряд 
+ 0039  8A E0					mov ah, al           
+ 003B  80 E4 40					and ah, 01000000b 
+ 003E  D0 EC					shr ah, 1 
+ 0040  0A F4					or dh, ah 
+ 0042  B1 03					mov cl, 3 
+ 0044  D2 EC					shr ah, cl 
+ 0046  0A F4					or dh, ah 
+					 
+ 0048  B8 4C00			        mov ax, 4c00h    ;  4c00h – код д
+				ля операційної системи 
+ 004B  CD 21			        int 21h          ;  виклик фун
+				кції операційної системи 
+ 004D				code ENDS 
+				    end begin 
+Microsoft (R) Macro Assembler Version 5.00                  9/24/18 17:05:19
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	004D	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+BEGIN  . . . . . . . . . . . . .  	L NEAR	0000	CODE
+
+@FILENAME  . . . . . . . . . . .  	TEXT  LAB1		
+
+
+     59 Source  Lines
+     59 Total   Lines
+      4 Symbols
+
+  51216 + 465328 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

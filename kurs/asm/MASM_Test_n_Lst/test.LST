@@ -1,0 +1,78 @@
+Microsoft (R) Macro Assembler Version 5.00                  5/26/19 13:01:44
+                                                             Page     1-1
+
+
+				.386 
+				 
+ 0000				Data SEGMENT 
+ 0000  52 79 62 61 6B		  Str1   DB  'Rybak' 
+ 0005  55			  Int2   DB  01010101b 
+ 0006  020B			  Int10  DW  523 
+ 0008  6A850F00			  Int16  DD  0F856Ah 
+ 000C				Data ENDS 
+				 
+ 0000				Code SEGMENT 
+				  ASSUME DS:Data, CS:Code 
+ = 0032				  NUMBER EQU 50 
+ 0000  0D			  Int0  DB  00001101b 
+ 0001				start: 
+				  IF NUMBER 
+ 0001  FA			  Cli 
+ 0002  0F 86 00000032 R		  Jbe endl 
+ 0008  B2 3C			  Mov dl, 00111100b 
+ 000A  B0 0F			  Mov al, 00001111b 
+ 000C  46			  Inc esi 
+ 000D  2E: FE 8C10 00000000	  Dec Int0[eax+edx] 
+	R			
+ 0015  02 C2			  Add al, dl 
+ 0017  3A 9411 00000000 R	  Cmp dl, Str1[ecx + edx] 
+ 001E  2E: 20 9410 00000000	  And Int0[eax+edx], dl 
+	R			
+ 0026  2E: 80 8C10 00000000	  Or  Int0[eax+edx], NUMBER 
+	R 32			
+				 
+				  ENDIF 
+ 002F  76 D0			  Jbe start 
+ 0031  FA			  Cli 
+				 
+ 0032				endl: 
+ 0032				Code ends 
+				END start 
+Microsoft (R) Macro Assembler Version 5.00                  5/26/19 13:01:44
+                                                             Symbols-1
+
+
+
+
+                N a m e         	Size	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	32 Bit	0032	PARA	NONE	
+DATA . . . . . . . . . . . . . .  	32 Bit	000C	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+ENDL . . . . . . . . . . . . . .  	L NEAR	0032	CODE
+
+INT0 . . . . . . . . . . . . . .  	L BYTE	0000	CODE
+INT10  . . . . . . . . . . . . .  	L WORD	0006	DATA
+INT16  . . . . . . . . . . . . .  	L DWORD	0008	DATA
+INT2 . . . . . . . . . . . . . .  	L BYTE	0005	DATA
+
+NUMBER . . . . . . . . . . . . .  	NUMBER	0032	
+
+START  . . . . . . . . . . . . .  	L NEAR	0001	CODE
+STR1 . . . . . . . . . . . . . .  	L BYTE	0000	DATA
+
+@FILENAME  . . . . . . . . . . .  	TEXT  ya		
+
+
+     36 Source  Lines
+     36 Total   Lines
+     12 Symbols
+
+  51000 + 465544 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

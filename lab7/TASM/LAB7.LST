@@ -1,0 +1,223 @@
+Turbo Assembler	 Version 2.02	     06/21/19 10:29:45	    Page 1
+lab7.ASM
+
+
+
+      1					 .386
+      2
+      3	    0000			 DATA SEGMENT use16
+      4	    0000  ????????????????		 temporally	 dq ?
+      5
+      6	    0008  C010000000000000		 min_x		 dq -4.0
+      7	    0010  4010000000000000		 max_x		 dq 4.0
+      8	    0018  0140				 max_crt_x	 dw 320
+      9	    001A  ????				 crt_x		 dw ?
+     10	    001C  ????????????????		 scale_x	 dq ?
+     11
+     12	    0024  C010000000000000		 min_y		 dq -4.0
+     13	    002C  4010000000000000		 max_y		 dq 4.0
+     14	    0034  00C8				 max_crt_y	 dw 200
+     15	    0036  ????				 crt_y		 dw ?
+     16	    0038  ????????????????		 scale_y	 dq ?
+     17	    0040			 DATA ENDS
+     18
+     19	    0000			 CODE SEGMENT use16
+     20					 ASSUME	CS:CODE,DS:DATA
+     21
+     22					 scale macro p1
+     23						 fld max_&p1
+     24						 fsub min_&p1
+     25						 fild max_crt_&p1
+     26						 fdivp st (1), st (0)
+     27						 fstp scale_&p1	; top=0
+     28					 endm
+     29
+     30	    0000			 start:
+     31	    0000  B8 0000s			 mov ax, DATA
+     32	    0003  8E D8				 mov ds, ax
+     33
+     34	    0005  9B DB	E3			 finit
+     35						 scale x
+1    36	    0008  DD 06	0010r			 fld max_x
+1    37	    000C  DC 26	0008r			 fsub min_x
+1    38	    0010  DF 06	0018r			 fild max_crt_x
+1    39	    0014  DE F9				 fdivp st (1), st (0)
+1    40	    0016  DD 1E	001Cr			 fstp scale_x ;	top=0
+     41						 scale y
+1    42	    001A  DD 06	002Cr			 fld max_y
+1    43	    001E  DC 26	0024r			 fsub min_y
+1    44	    0022  DF 06	0034r			 fild max_crt_y
+1    45	    0026  DE F9				 fdivp st (1), st (0)
+1    46	    0028  DD 1E	0038r			 fstp scale_y ;	top=0
+     47
+     48	    002C  B8 0013			 mov ax, 13h
+     49	    002F  CD 10				 int 10h
+     50
+     51	    0031  B8 A000			 mov ax, 0A000h
+     52	    0034  8E C0				 mov es, ax
+     53
+     54	    0036  BF 0000			 mov di, 0
+     55	    0039  B9 FA00			 mov cx, 320*200
+     56	    003C  B8 002C			 mov ax, 2Ch
+     57	    003F  F3> AA			 rep stosb
+Turbo Assembler	 Version 2.02	     06/21/19 10:29:45	    Page 2
+lab7.ASM
+
+
+
+     58
+     59	    0041  B9 0140			 mov cx, 320
+     60	    0044				 line1:
+     61	    0044  49					 dec cx
+     62	    0045  BF 7D00				 mov di, 320*100
+     63	    0048  03 F9					 add di, cx
+     64	    004A  B0 20					 mov al, 32
+     65	    004C  AA					 stosb
+     66	    004D  83 F9	00				 cmp cx, 0
+     67	    0050  75 F2				 jne line1
+     68
+     69
+     70	    0052  B9 00C8			 mov cx, 200
+     71	    0055				 line2:
+     72	    0055  49					 dec cx
+     73	    0056  BF 00A0				 mov di, 160
+     74
+     75	    0059  8B C1					 mov ax, cx
+     76	    005B  69 C0	0140				 imul ax, 320
+     77
+     78	    005F  03 F8					 add di, ax
+     79	    0061  B0 20					 mov al, 32
+     80	    0063  AA					 stosb
+     81	    0064  83 F9	00				 cmp cx, 0
+     82	    0067  75 EC				 jne line2
+     83
+     84	    0069  8B 16	0018r			 mov dx, max_crt_x
+     85	    006D  89 16	001Ar			 mov crt_x, dx
+     86
+     87	    0071				 draw:
+     88	    0071  FF 0E	001Ar				 dec crt_x
+     89
+     90							 ; перетворення екранної координати в	    +
+     91					 дійсну.
+     92							 ; top=0
+     93	    0075  DD 06	001Cr				 fld scale_x
+     94							 ; st0 - масштаб
+     95	    0079  DF 06	001Ar				 fild crt_x
+     96							 ; st0=crt_x, st1-масштаб
+     97
+     98							 ;top =	6
+     99	    007D  DE C9					 fmulp st(1), st(0)		 ; top=7
+    100	    007F  DC 06	0008r				 fadd min_x		 ; st0 - реальне	зн. Х; top=7
+    101
+    102	    0083  DD 16	0000r				 fst temporally
+    103	    0087  D9 FE					 fsin
+    104	    0089  DD 06	0000r				 fld temporally
+    105	    008D  D9 FF					 fcos
+    106	    008F  DE F9					 fdiv
+    107	    0091  DD 06	0000r				 fld temporally
+    108	    0095  D9 FE					 fsin
+    109	    0097  DE C1					 fadd
+    110
+    111							 ; контроль діапазону (top не змінюється)
+    112							 ; порівняння	ST (0) та min_y
+    113	    0099  DC 16	0024r				 fcom min_y
+    114							 ; результат порівняння в ax
+Turbo Assembler	 Version 2.02	     06/21/19 10:29:45	    Page 3
+lab7.ASM
+
+
+
+    115	    009D  9B DF	E0				 fstsw ax
+    116							 ; результат порівняння
+    117	    00A0  9E					 sahf
+    118							 ;ST (0) та min_y в регістр Flags
+    119
+    120							 ; st0 < min_y
+    121	    00A1  72 33	90 90				 jc minus
+    122							 ; поза видимим діапазоном
+    123							 ; по	@minus забезпечити top=0 і
+    124							 ; crt_y=max_crt_y
+    125
+    126							 ; порівняння	ST (0) та max_y
+    127	    00A5  DC 16	002Cr				 fcom max_y
+    128	    00A9  9B DF	E0				 fstsw ax
+    129	    00AC  9E					 sahf
+    130	    00AD  77 27	90 90				 ja plus	 ; st0 > max_y (zf=cf=0)
+    131							 ; поза видимим діапазоном
+    132							 ; по	@plus -	забезпечити top=0
+    133							 ; і встановити crt_y=0
+    134	    00B1  DC 26	0024r				 fsub min_y;
+    135	    00B5  DC 36	0038r				 fdiv scale_y
+    136							 ; округлення	до цілого
+    137	    00B9  D9 FC					 frndint
+    138							 ; TOP=0!!!
+    139	    00BB  DF 1E	0036r				 fistp crt_y
+    140
+    141							 ; дзеркальне	відображення
+    142	    00BF  A1 0034r				 mov ax, max_crt_y
+    143	    00C2  2B 06	0036r				 sub ax, crt_y
+    144	    00C6  A3 0036r				 mov crt_y, ax
+    145
+    146	    00C9  69 C0	0140				 imul ax, 320
+    147
+    148	    00CD  03 06	001Ar				 add ax, WORD PTR crt_x
+    149	    00D1  8B F8					 mov di, ax
+    150	    00D3  B0 20					 mov al, 32
+    151	    00D5  AA					 stosb
+    152
+    153	    00D6					 minus:
+    154	    00D6					 plus:
+    155
+    156	    00D6  DD 1E	0000r				 fstp temporally
+    157
+    158	    00DA  83 3E	001Ar 00		 cmp crt_x, 0
+    159	    00DF  75 90				 jne draw
+    160
+    161	    00E1  B4 4C				 mov		 ah, 4ch
+    162	    00E3  CD 21				 int		 21h
+    163
+    164	    00E5			 CODE ENDS
+    165					 end start
+Turbo Assembler	 Version 2.02	     06/21/19 10:29:45	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "06/21/19"
+??FILENAME			  Text	 "lab7	  "
+??TIME				  Text	 "10:29:45"
+??VERSION			  Number 0202
+@CPU				  Text	 0D0FH
+@CURSEG				  Text	 CODE
+@FILENAME			  Text	 LAB7
+@WORDSIZE			  Text	 2
+CRT_X				  Word	 DATA:001A
+CRT_Y				  Word	 DATA:0036
+DRAW				  Near	 CODE:0071
+LINE1				  Near	 CODE:0044
+LINE2				  Near	 CODE:0055
+MAX_CRT_X			  Word	 DATA:0018
+MAX_CRT_Y			  Word	 DATA:0034
+MAX_X				  Qword	 DATA:0010
+MAX_Y				  Qword	 DATA:002C
+MINUS				  Near	 CODE:00D6
+MIN_X				  Qword	 DATA:0008
+MIN_Y				  Qword	 DATA:0024
+PLUS				  Near	 CODE:00D6
+SCALE_X				  Qword	 DATA:001C
+SCALE_Y				  Qword	 DATA:0038
+START				  Near	 CODE:0000
+TEMPORALLY			  Qword	 DATA:0000
+
+Macro Name
+
+SCALE
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+CODE				  16  00E5 Para	  none
+DATA				  16  0040 Para	  none
+
